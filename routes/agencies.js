@@ -8,22 +8,23 @@ const winston = require('winston');
  * @apiName GetAgency
  * @apiGroup Agency
  *
- * @apiSuccess  {String}  _id
- * @apiSuccess  {String}  name
- * @apiSuccess  {Object}  address
- * @apiSuccess  {String}  address.street1
- * @apiSuccess  {String}  address.street2
- * @apiSuccess  {String}  address.city
- * @apiSuccess  {String}  address.state
- * @apiSuccess  {String}  address.postal
- * @apiSuccess  {String}  phone
+ * @apiSuccess  {Object[]}  agencies
+ * @apiSuccess  {String}    agencies._id
+ * @apiSuccess  {String}    agencies.name
+ * @apiSuccess  {Object}    agencies.address
+ * @apiSuccess  {String}    agencies.address.street1
+ * @apiSuccess  {String}    agencies.address.street2
+ * @apiSuccess  {String}    agencies.address.city
+ * @apiSuccess  {String}    agencies.address.state
+ * @apiSuccess  {String}    agencies.address.postal
+ * @apiSuccess  {String}    agencies.phone
  *
  * @apiUse UnauthorizedError
  */
 router.get('/', (req, res) => {
-  winston.log('GET /agencies');
+  winston.debug('GET /agencies');
 
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() && req.user.isAdmin) {
     Agency.find()
       .then(agency => {
         res.json(agency);
@@ -53,10 +54,10 @@ router.get('/', (req, res) => {
  * @apiUse UnauthorizedError
  */
 router.get('/:agency_id', (req, res) => {
-  winston.log(`GET /agencies/${req.params.agency_id}`);
+  winston.debug(`GET /agencies/${req.params.agency_id}`);
 
-  if (req.isAuthenticated()) {
-    Agency.findOne({ _id: req.params.agency_id })
+  if (req.isAuthenticated() && req.user.isAdmin) {
+    Agency.findById(req.params.agency_id)
       .then(agency => {
         res.json(agency);
       })
@@ -77,7 +78,7 @@ router.get('/:agency_id', (req, res) => {
  * @apiParam  {String}  street2
  * @apiParam  {String}  city
  * @apiParam  {String}  state
- * @apiParma  {String}  postal
+ * @apiParam  {String}  postal
  * @apiParam  {String}  phone
  *
  * @apiSuccess  {String}  _id
@@ -93,10 +94,10 @@ router.get('/:agency_id', (req, res) => {
  * @apiUse UnauthorizedError
  */
 router.post('/', (req, res) => {
-  winston.log('POST /agencies');
+  winston.debug('POST /agencies');
 
   const required = ['name', 'phone'];
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() && req.user.isAdmin) {
     if (!utils.checkProperties(required, req.body)) {
       res
         .status(422)
@@ -136,15 +137,15 @@ router.post('/', (req, res) => {
  * @apiParam  {String}  [street2]
  * @apiParam  {String}  [city]
  * @apiParam  {String}  [state]
- * @apiParma  {String}  [postal]
+ * @apiParam  {String}  [postal]
  * @apiParam  {String}  [phone]
  *
  * @apiUse UnauthorizedError
  */
 router.put('/:agency_id', (req, res) => {
-  winston.log(`PUT /agencies/${req.params.agency_id}`);
+  winston.debug(`PUT /agencies/${req.params.agency_id}`);
 
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() && req.user.isAdmin) {
     Agency.findById(req.params.agency_id)
       .then(agency => {
         agency.name = req.body.name || agency.name;
@@ -174,14 +175,14 @@ router.put('/:agency_id', (req, res) => {
  * @apiName DeleteAgency
  * @apiGroup Agency
  *
- * @apiParam  {ObjectId}  agency_id
+ * @apiParam  {String}  agency_id
  *
  * @apiUse UnauthorizedError
  */
 router.delete('/:agency_id', (req, res) => {
-  winston.log(`DELETE /agencies/${req.params.agency_id}`);
+  winston.debug(`DELETE /agencies/${req.params.agency_id}`);
 
-  if (req.isAuthenticated()) {
+  if (req.isAuthenticated() && req.user.isAdmin) {
     Agency.findOneAndRemove({ _id: req.params.agency_id })
       .then(() => {
         res.end();
@@ -194,4 +195,6 @@ router.delete('/:agency_id', (req, res) => {
     res.status(401).end();
   }
 });
+
+module.exports = router;
 

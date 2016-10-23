@@ -19,7 +19,7 @@ const winston = require('winston');
  * @apiUse UnauthorizedError
  */
 router.get('/', (req, res) => {
-  winston.log('GET /auth');
+  winston.debug('GET /auth');
   if (req.isAuthenticated()) {
     res.json({
       _id: req.user._id,
@@ -47,13 +47,12 @@ router.get('/', (req, res) => {
  * @apiParam  {String}  [phone]   Phone number
  */
 router.post('/register', (req, res) => {
-  winston.log('POST /auth/register');
+  winston.debug('POST /auth/register');
   const required = ['firstName', 'lastName', 'email', 'password', 'key'];
   if (!utils.checkProperties(required, req.body)) {
     res
-      .json({ error: `${required.join(',')} are required` })
       .status(422)
-      .end();
+      .json({ error: `${required.join(',')} are required` });
   } else {
     User.findOne({ email: req.body.email })
       .then(user => {
@@ -105,12 +104,12 @@ router.post('/register', (req, res) => {
  * @apiUse UnprocessableEntityError
  */
 router.post('/login', (req, res) => {
+  winston.debug('POST /auth/login');
   const required = ['email', 'password'];
   if (!utils.checkProperties(required, req.body)) {
     res
-      .json({ error: `${required.join(',')} are required` })
       .status(422)
-      .end();
+      .json({ error: `${required.join(',')} are required` });
   } else {
     User.findOne({ email: req.body.email })
       .then(user => {
@@ -149,6 +148,7 @@ router.post('/login', (req, res) => {
  * @apiGroup Auth
  */
 router.post('/logout', (req, res) => {
+  winston.debug('POST /auth/logout');
   req.logout();
   res.status(204).end();
 });
