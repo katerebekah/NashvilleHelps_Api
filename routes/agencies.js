@@ -1,7 +1,12 @@
 const router = require('express').Router();
-const Agency = require('../models').Agency;
+const models = require('../models');
+const Agency = models.Agency;
+const Service = models.Service;
 const utils = require('../lib/utils');
 const winston = require('winston');
+const ExpiryStore = require('../lib/expiry-store');
+const store = new ExpiryStore();
+const privileged = (agency, user) => user.isAdmin || user.agency === agency;
 
 /**
  * @api {get} /agencies Get all agencies
@@ -56,7 +61,7 @@ router.get('/', (req, res) => {
 router.get('/:agency_id', (req, res) => {
   winston.debug(`GET /agencies/${req.params.agency_id}`);
 
-  if (req.isAuthenticated() && req.user.isAdmin) {
+  if (req.isAuthenticated() && privileged(req.params.agency_id, req.user)) {
     Agency.findById(req.params.agency_id)
       .then(agency => {
         res.json(agency);
@@ -145,7 +150,7 @@ router.post('/', (req, res) => {
 router.put('/:agency_id', (req, res) => {
   winston.debug(`PUT /agencies/${req.params.agency_id}`);
 
-  if (req.isAuthenticated() && req.user.isAdmin) {
+  if (req.isAuthenticated() && privileged(req.params.agency_id, req.user)) {
     Agency.findById(req.params.agency_id)
       .then(agency => {
         agency.name = req.body.name || agency.name;
@@ -195,6 +200,98 @@ router.delete('/:agency_id', (req, res) => {
     res.status(401).end();
   }
 });
+
+/**
+ * @api {post} /agencies/:agency_id/token Create a registration token
+ * @apiName AgencyToken
+ * @apiGroup Agency
+ *
+ * @apiParam  {String}  agency_id
+ * @apiParam  {String}  email
+ *
+ * @apiSuccess  {String}  token
+ *
+ * @apiUse UnauthorizedError
+ */
+router.post('/:agency_id/token', (req, res) => {
+  winston.debug(`POST /agencies/${req.params.agency_id}/token`);
+
+  if (!req.body.email) {
+    res.status(422).json({ error: 'email required' });
+  } else if (req.isAuthenticated() && privileged(req.params.agency_id, req.user)) {
+    Agency.findById(req.params.agency_id)
+      .then(agency => {
+        const token = store.generate({
+          agency_id: agency._id,
+          email: req.body.email,
+        });
+        res.json({ token });
+      })
+      .catch(error => {
+        winston.error(error);
+        res.status(500).end();
+      });
+  } else {
+    res.status(401).end();
+  }
+});
+
+/**
+ * @api {get} /agencies/:agency_id/services Get a list of provided services
+ * @apiName GetAgencyServices
+ * @apiGroup Agency
+ *
+ * @apiParam  {String}  agency_id
+ *
+ * @apiSuccess  {Object[]}  services
+ * @apiSuccess  {String}    services._id
+ * @apiSuccess  {String}    services.name
+ * @apiSuccess  {String}    services.category
+ *
+ * @apiUse UnauthorizedError
+ */
+router.get('/:agency_id/services', (req, res) => {
+  winston.debug(`POST /agencies/${req.params.agency_id}/services`);
+
+  if (req.isAuthenticated() && privileged(req.params.agency_id, req.user)) {
+    Agency.findById(req.params.agency_id)
+      .then(agency => Service.find({ _id: agency.services }))
+      .then(services => res.json(services))
+      .catch(error => {
+        winston.error(error);
+        res.status(500).end();
+      });
+  } else {
+    res.status(401).end();
+  }
+});
+
+/**
+ * @api {post} /agencies/:agency_id/services Associate service to agency
+ * @apiName CreateAgencyService
+ * @apiGroup Agency
+ *
+ * @apiParam  {String}  agency_id
+ * @apiParam  {String}  service_id
+ *
+ * @apiSuccess  {String}    _id
+ * @apiSuccess  {String}    name
+ * @apiSuccess  {String}    category
+ *
+ * @apiUse UnauthorizedError
+ * @apiUse UnprocessableEntityError
+ */
+
+/**
+ * @api {delete} /agencies/:agency_id/services/:service_id Disassociate service from agency
+ * @apiName DeleteAgencyService
+ * @apiGroup Agency
+ *
+ * @apiParam  {String}  agency_id
+ * @apiParam  {String}  service_id
+ *
+ * @apiUse UnprocessableEntityError
+ */
 
 module.exports = router;
 
