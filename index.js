@@ -12,7 +12,7 @@ const staticPath = path.resolve(config.static);
 const app = express();
 
 winston.level = config.logLevel;
-
+winston.log(staticPath);
 app.use(express.static(staticPath));
 app.use(helmet());
 app.use('/docs', express.static(`${__dirname}/docs`));
@@ -23,7 +23,7 @@ app.use(session(config.session));
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use('/', routes);
+app.use('/api', routes);
 
 app.listen(config.port, () => {
   winston.info(`Server is running on port ${config.port}`);
