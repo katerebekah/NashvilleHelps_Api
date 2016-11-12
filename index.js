@@ -15,7 +15,7 @@ winston.level = config.logLevel;
 winston.log(staticPath);
 app.use(express.static(staticPath));
 app.use(helmet());
-app.use('/docs', express.static(`${__dirname}/docs`));
+app.use('/api/docs', express.static(`${__dirname}/docs`));
 app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
