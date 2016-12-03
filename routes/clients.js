@@ -154,6 +154,7 @@ router.get('/:client_id', (req, res) => {
  * @apiSuccess  {String}    phone
  * @apiSuccess  {String}    assistant
  * @apiSuccess  {String}    client_notes
+ * @apiSuccess  {String}    date_created
  * @apiSuccess  {Object[]}  referrals
  * @apiSuccess  {Boolean}   referrals.is_complete
  * @apiSuccess  {String}    referrals.agency
@@ -193,6 +194,7 @@ router.post('/', (req, res) => {
       phone: req.body.phone,
       assistant: req.body.assistant,
       client_notes: req.body.notes,
+      date_created: new Date(),
     });
 
     let serviceArray;
@@ -265,6 +267,8 @@ router.post('/', (req, res) => {
  * @apiSuccess  {String}    phone
  * @apiSuccess  {String}    assistant
  * @apiSuccess  {String}    client_notes
+ * @apiSuccess  {String}    date_created
+ * @apiSuccess  {String}    date_completed
  * @apiSuccess  {Object[]}  referrals
  * @apiSuccess  {Boolean}   referrals.is_complete
  * @apiSuccess  {Date}      referrals.requested
@@ -315,11 +319,13 @@ router.put('/:client_id', (req, res) => {
  * @apiParam  {String}  client_id
  * @apiParam  {String}  service_id
  * @apiParam  {String}  notes
+ * @apiParam  {Boolean} [is_complete=true]
  *
  * @apiUse UnauthorizedError
  */
 router.post('/:client_id/service/:service_id', (req, res) => {
   winston.debug(`POST /clients/${req.params.client_id}/service/${req.params.service_id}`);
+  req.body.is_complete = req.body.is_complete || true;
 
   if (!req.isAuthenticated()) {
     res.status(401).end();
@@ -329,16 +335,24 @@ router.post('/:client_id/service/:service_id', (req, res) => {
         let isFulfilled = true;
         client.referrals.forEach((r, i) => {
           if (r.service.toString().toUpperCase() === req.params.service_id.toUpperCase()) {
-            client.referrals[i].is_complete = true;
+            const isComplete = typeof req.body.is_complete === 'boolean'
+                             ? req.body.is_complete
+                             : req.body.is_complete === 'true';
+            client.referrals[i].is_complete = isComplete;
             client.referrals[i].agency = req.user.agency;
-            client.referrals[i].notes = req.body.notes;
+            if (req.body.notes) {
+              client.referrals[i].notes = req.body.notes;
+            }
           }
 
           if (!client.referrals[i].is_complete) {
             isFulfilled = false;
           }
         });
-        client.is_fulfilled = isFulfilled;
+        if (isFulfilled) {
+          client.is_fulfilled = true;
+          client.date_completed = new Date();
+        }
         return client.save();
       })
       .then(() => {
